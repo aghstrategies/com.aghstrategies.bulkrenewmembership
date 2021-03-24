@@ -24,6 +24,32 @@ function bulkrenewmembership_civicrm_searchTasks($objectType, &$tasks) {
 }
 
 /**
+ * Helper API call
+ * @param  string $entity
+ * @param  string $action
+ * @param  array $params
+ * @return array          result
+ */
+function bulkrenewmembership_helperApiCall($entity, $action, $params) {
+  try {
+    $result = civicrm_api3($entity, $action, $params);
+  }
+  catch (CiviCRM_API3_Exception $e) {
+    $error = $e->getMessage();
+    $result = [
+      'is_error' => 1,
+      'error_message' => $error,
+    ];
+    CRM_Core_Error::debug_log_message(ts('API Error %1', array(
+      'domain' => 'com.aghstrategies.bulkrenewmembership',
+      1 => $error,
+    )));
+  }
+  return $result;
+}
+
+
+/**
  * Implements hook_civicrm_config().
  *
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_config/

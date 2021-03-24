@@ -64,7 +64,7 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       if (!$ufGroupId) {
         CRM_Core_Error::statusBounce('ufGroupId is missing');
       }
-      $this->_title = ts('Update multiple memberships') . ' - ' . CRM_Core_BAO_UFGroup::getTitle($ufGroupId);
+      $this->_title = ts('Bulk Renew Memberships');
       CRM_Utils_System::setTitle($this->_title);
 
       $this->addDefaultButtons(ts('Save'));
@@ -180,6 +180,49 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
      */
     public function postProcess() {
       $params = $this->exportValues();
+      $today = date("F j, Y, g:i a");
+
+      if (!empty($this->_memberIds)) {
+        foreach ($this->_memberIds as $key => $membershipId) {
+          // get last membership payment
+          $lastPaymentInfo = bulkrenewmembership_helperApiCall('MembershipPayment', 'get', [
+            'sequential' => 1,
+            'membership_id' => $membershipId,
+            'options' => ['sort' => "id DESC"],
+            'api.Contribution.getsingle' => ['id' => "\$value.contribution_id"],
+          ]);
+
+          // TODO create pending membership payment based on last membership payment
+          if ($lastPaymentInfo['is_error'] == 0 && !empty($lastPaymentInfo['values'][0]['api.Contribution.getsingle']['id'])) {
+            $newPaymentDetails = [
+              'contribution_source' => "Bulk Renewal - $today",
+              'contribution_status_id' => 'Pending',
+              'is_pay_later' => 1,
+              'receive_date' => $today,
+            ];
+            $paramsToCopy = [
+              'contact_id',
+              'currency',
+              'total_amount',
+              'financial_type_id',
+              'financial_type',
+              'contribution_type_id',
+            ];
+            foreach ($paramsToCopy as $key => $fieldName) {
+              if (!empty($lastPaymentInfo['values'][0]['api.Contribution.getsingle'][$fieldName])) {
+                $newPaymentDetails[$fieldName] = $lastPaymentInfo['values'][0]['api.Contribution.getsingle'][$fieldName];
+              }
+            }
+            // Create new Membership Payment
+            $renewPaymentDetails = bulkrenewmembership_helperApiCall('Contribution', 'create', $newPaymentDetails);
+            if (isset($renewPaymentDetails['id'])) {
+              // Create Connection between membership payment and contribution
+              bulkrenewmembership_helperApiCall('MembershipPayment', 'create', ['contribution_id' => $renewPaymentDetails['id'], 'membership_id' => $membershipId]);
+            }
+          }
+        }
+      }
+
       if (isset($params['field'])) {
         $this->submit($params);
         CRM_Core_Session::setStatus(ts('Your updates have been saved.'), ts('Saved'), 'success');
