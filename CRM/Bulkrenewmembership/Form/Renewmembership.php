@@ -67,7 +67,7 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
         'title' => 'Total Amount',
         'html_type' => 'text',
       ]];
-      $this->_fields = CRM_Core_BAO_UFGroup::getFields(18, FALSE, CRM_Core_Action::VIEW);
+      // $this->_fields = CRM_Core_BAO_UFGroup::getFields(18, FALSE, CRM_Core_Action::VIEW);
       // print_r($this->_fields); die();
       // // remove file type field and then limit fields
       // $suppressFields = FALSE;
@@ -133,8 +133,9 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
             }
           }
           else {
+            // print_r($field); die();
             // TODO add fields by mirroring how its done in commented out function
-            $this->add($field['html_type'], $field['name'], );
+            $this->add($field['html_type'], $field['name'], $field['title'], NULL, FALSE);
             // handle non custom fields
             // CRM_Core_BAO_UFGroup::buildProfile($this, $field, NULL, $memberId);
           }
