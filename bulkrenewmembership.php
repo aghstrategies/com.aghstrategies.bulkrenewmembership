@@ -11,11 +11,14 @@ use CRM_Bulkrenewmembership_ExtensionUtil as E;
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_searchTasks/
  */
 function bulkrenewmembership_civicrm_searchTasks($objectType, &$tasks) {
+  // print_r($tasks); die();
   // Add new task to membership search
   if ($objectType == 'membership') {
     $tasks[] = [
       'title' => 'Bulk Update Memberships',
-      'class' => 'CRM_Member_Form_Task_Batch',
+      'class' => 'CRM_Bulkrenewmembership_Form_Renewmembership',
+      // 'class' => ['CRM_Member_Form_Task_PickProfile', 'CRM_Bulkrenewmembership_Form_Renewmembership'],
+      'result' => 1,
     ];
   }
 }
