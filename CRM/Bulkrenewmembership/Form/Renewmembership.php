@@ -59,17 +59,12 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
      * @return void
      */
     public function buildQuickForm() {
-      $ufGroupId = 18;
-
-      if (!$ufGroupId) {
-        CRM_Core_Error::statusBounce('ufGroupId is missing');
-      }
       $this->_title = ts('Bulk Renew Memberships');
       CRM_Utils_System::setTitle($this->_title);
 
       $this->addDefaultButtons(ts('Save'));
       $this->_fields = [];
-      $this->_fields = CRM_Core_BAO_UFGroup::getFields($ufGroupId, FALSE, CRM_Core_Action::VIEW);
+      // $this->_fields = CRM_Core_BAO_UFGroup::getFields($ufGroupId, FALSE, CRM_Core_Action::VIEW);
 
       // remove file type field and then limit fields
       $suppressFields = FALSE;
