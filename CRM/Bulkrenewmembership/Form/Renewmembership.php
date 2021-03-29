@@ -70,24 +70,24 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       // $this->_fields = CRM_Core_BAO_UFGroup::getFields(18, FALSE, CRM_Core_Action::VIEW);
       // print_r($this->_fields); die();
       // // remove file type field and then limit fields
-      // $suppressFields = FALSE;
-      // $removehtmlTypes = ['File'];
-      // foreach ($this->_fields as $name => $field) {
-      //   if ($cfID = CRM_Core_BAO_CustomField::getKeyID($name) &&
-      //     in_array($this->_fields[$name]['html_type'], $removehtmlTypes)
-      //   ) {
-      //     $suppressFields = TRUE;
-      //     unset($this->_fields[$name]);
-      //   }
-      //
-      //   //fix to reduce size as we are using this field in grid
-      //   if (is_array($field['attributes']) && !empty($this->_fields[$name]['attributes']['size']) && $this->_fields[$name]['attributes']['size'] > 19) {
-      //     //shrink class to "form-text-medium"
-      //     $this->_fields[$name]['attributes']['size'] = 19;
-      //   }
-      // }
-      //
-      // $this->_fields = array_slice($this->_fields, 0, $this->_maxFields);
+      $suppressFields = FALSE;
+      $removehtmlTypes = ['File'];
+      foreach ($this->_fields as $name => $field) {
+        if ($cfID = CRM_Core_BAO_CustomField::getKeyID($name) &&
+          in_array($this->_fields[$name]['html_type'], $removehtmlTypes)
+        ) {
+          $suppressFields = TRUE;
+          unset($this->_fields[$name]);
+        }
+
+        //fix to reduce size as we are using this field in grid
+        if (is_array($field['attributes']) && !empty($this->_fields[$name]['attributes']['size']) && $this->_fields[$name]['attributes']['size'] > 19) {
+          //shrink class to "form-text-medium"
+          $this->_fields[$name]['attributes']['size'] = 19;
+        }
+      }
+
+      $this->_fields = array_slice($this->_fields, 0, $this->_maxFields);
 
       $this->addButtons([
         [
@@ -105,14 +105,14 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       $this->assign('componentIds', $this->_memberIds);
 
       //load all campaigns.
-      // if (array_key_exists('member_campaign_id', $this->_fields)) {
-      //   $this->_componentCampaigns = [];
-      //   CRM_Core_PseudoConstant::populate($this->_componentCampaigns,
-      //     'CRM_Member_DAO_Membership',
-      //     TRUE, 'campaign_id', 'id',
-      //     ' id IN (' . implode(' , ', array_values($this->_memberIds)) . ' ) '
-      //   );
-      // }
+      if (array_key_exists('member_campaign_id', $this->_fields)) {
+        $this->_componentCampaigns = [];
+        CRM_Core_PseudoConstant::populate($this->_componentCampaigns,
+          'CRM_Member_DAO_Membership',
+          TRUE, 'campaign_id', 'id',
+          ' id IN (' . implode(' , ', array_values($this->_memberIds)) . ' ) '
+        );
+      }
 
       $customFields = CRM_Core_BAO_CustomField::getFields('Membership');
       foreach ($this->_memberIds as $memberId) {
@@ -137,7 +137,7 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
             // TODO add fields by mirroring how its done in commented out function
             $this->add($field['html_type'], $field['name'], $field['title'], NULL, FALSE);
             // handle non custom fields
-            // CRM_Core_BAO_UFGroup::buildProfile($this, $field, NULL, $memberId);
+            CRM_Core_BAO_UFGroup::buildProfile($this, $field, NULL, $memberId);
           }
         }
       }
@@ -170,8 +170,15 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       $defaults = [];
       foreach ($this->_memberIds as $memberId) {
         CRM_Core_BAO_UFGroup::setProfileDefaults(NULL, $this->_fields, $defaults, FALSE, $memberId, 'Membership');
-      }
 
+        // Populate Membership Contribution Fields
+        $lastPaymentInfo = $this->fetch_lastpaymentinfo($memberId);
+        foreach ($this->_fields as $fieldName => $fieldDetails) {
+          if (isset($lastPaymentInfo[$fieldDetails['name']])) {
+            $defaults["field[$memberId][{$fieldDetails['name']}]"] = $lastPaymentInfo[$fieldDetails['name']];
+          }
+        }
+      }
       return $defaults;
     }
 
@@ -188,15 +195,10 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       if (!empty($this->_memberIds)) {
         foreach ($this->_memberIds as $key => $membershipId) {
           // get last membership payment
-          $lastPaymentInfo = bulkrenewmembership_helperApiCall('MembershipPayment', 'get', [
-            'sequential' => 1,
-            'membership_id' => $membershipId,
-            'options' => ['sort' => "id DESC"],
-            'api.Contribution.getsingle' => ['id' => "\$value.contribution_id"],
-          ]);
+          $lastPaymentInfo = $this->fetch_lastpaymentinfo($membershipId);
 
           // TODO create pending membership payment based on last membership payment
-          if ($lastPaymentInfo['is_error'] == 0 && !empty($lastPaymentInfo['values'][0]['api.Contribution.getsingle']['id'])) {
+          if (!empty($lastPaymentInfo)) {
             $newPaymentDetails = [
               'contribution_source' => "Bulk Renewal - $today",
               'contribution_status_id' => 'Pending',
@@ -212,10 +214,16 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
               'contribution_type_id',
             ];
             foreach ($paramsToCopy as $key => $fieldName) {
-              if (!empty($lastPaymentInfo['values'][0]['api.Contribution.getsingle'][$fieldName])) {
-                $newPaymentDetails[$fieldName] = $lastPaymentInfo['values'][0]['api.Contribution.getsingle'][$fieldName];
+              if (!empty($lastPaymentInfo[$fieldName])) {
+                $newPaymentDetails[$fieldName] = $lastPaymentInfo[$fieldName];
               }
             }
+            foreach ($this->_fields as $fieldName => $fieldDetails) {
+              if (isset($fieldDetails['name']) && isset($this->_submitValues['field'][$membershipId][$fieldDetails['name']])) {
+                $newPaymentDetails[$fieldDetails['name']] = $this->_submitValues['field'][$membershipId][$fieldDetails['name']];
+              }
+            }
+
             // Create new Membership Payment
             $renewPaymentDetails = bulkrenewmembership_helperApiCall('Contribution', 'create', $newPaymentDetails);
             if (isset($renewPaymentDetails['id'])) {
@@ -234,6 +242,21 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       else {
         CRM_Core_Session::setStatus(ts('No updates have been saved.'), ts('Not Saved'), 'alert');
       }
+    }
+
+    function fetch_lastpaymentinfo($membershipId) {
+      $lastPayment = [];
+      $lastPaymentInfo = bulkrenewmembership_helperApiCall('MembershipPayment', 'get', [
+        'sequential' => 1,
+        'contribution_id.contribution_status_id' => "Completed",
+        'membership_id' => $membershipId,
+        'options' => ['sort' => "id DESC"],
+        'api.Contribution.getsingle' => ['id' => "\$value.contribution_id"],
+      ]);
+      if ($lastPaymentInfo['is_error'] == 0 && !empty($lastPaymentInfo['values'][0]['api.Contribution.getsingle']['id'])) {
+        $lastPayment = $lastPaymentInfo['values'][0]['api.Contribution.getsingle'];
+      }
+      return $lastPayment;
     }
 
     // /**
