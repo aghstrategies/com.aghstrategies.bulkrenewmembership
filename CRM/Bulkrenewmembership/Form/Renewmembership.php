@@ -41,6 +41,7 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
         'sort_name' => ts('Name'),
         'membership_id' => ts('Membership ID'),
         'membership_name' => ts('Membership Type'),
+        'contribution_source' => ts('Contribution Source'),
       ],
         CRM_Core_BAO_Setting::valueOptions(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
           'contact_autocomplete_options',
@@ -56,7 +57,19 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
         $contactInfo['membership_id'] = $memberId;
         $membership = bulkrenewmembership_helperApiCall('Membership', 'getsingle', ['id' => $memberId]);
         $contactInfo['membership_name'] = $membership['membership_name'];
+        $memPayment = $this->fetch_lastpaymentinfo($memberId);
+        if (empty($memPayment)) {
+          unset($contactDetails[$memberId]);
+          $memberIds = $this->getVar('_memberIds');
+          if (($key = array_search($memberId, $memberIds)) !== false) {
+            unset($memberIds[$key]);
+          }
+          $this->setVar('_memberIds', $memberIds);
+          CRM_Core_Session::setStatus(ts('Removing member Id %1 from bulk update screen because no completed related membership payment to copy was found.', [1 => $memberId]), ts('No Membership Payment Found'), 'alert');
+        }
+        $contactInfo['contribution_source'] = $memPayment['contribution_source'];
       }
+      // print_r($this); die();
       $this->assign('contactDetails', $contactDetails);
       $this->assign('readOnlyFields', $readOnlyFields);
     }
@@ -236,7 +249,7 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
             $renewPaymentDetails = bulkrenewmembership_helperApiCall('Contribution', 'create', $newPaymentDetails);
             if (isset($renewPaymentDetails['id'])) {
               // Create Connection between membership payment and contribution
-              bulkrenewmembership_helperApiCall('MembershipPayment', 'create', ['contribution_id' => $renewPaymentDetails['id'], 'membership_id' => $membershipId]);
+              $memPayment = bulkrenewmembership_helperApiCall('MembershipPayment', 'create', ['contribution_id' => $renewPaymentDetails['id'], 'membership_id' => $membershipId]);
             }
           }
         }
@@ -266,73 +279,5 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       }
       return $lastPayment;
     }
-
-    // /**
-    //  * @param array $params
-    //  *
-    //  * @return mixed
-    //  * @throws \CRM_Core_Exception
-    //  * @throws \CiviCRM_API3_Exception
-    //  */
-    // public function submit(array $params) {
-    //   $dates = [
-    //     'membership_join_date',
-    //     'membership_start_date',
-    //     'membership_end_date',
-    //   ];
-    //   $customFields = [];
-    //   foreach ($params['field'] as $key => $value) {
-    //     $value['id'] = $key;
-    //     if (!empty($value['membership_source'])) {
-    //       $value['source'] = $value['membership_source'];
-    //     }
-    //
-    //     if (!empty($value['membership_type'])) {
-    //       $membershipTypeId = $value['membership_type_id'] = $value['membership_type'][1];
-    //     }
-    //
-    //     unset($value['membership_source']);
-    //     unset($value['membership_type']);
-    //
-    //     //Get the membership status
-    //     $value['status_id'] = (CRM_Utils_Array::value('membership_status', $value)) ? $value['membership_status'] : CRM_Core_DAO::getFieldValue('CRM_Member_DAO_Membership', $key, 'status_id');
-    //     unset($value['membership_status']);
-    //     foreach ($dates as $val) {
-    //       if (isset($value[$val])) {
-    //         $value[$val] = CRM_Utils_Date::processDate($value[$val]);
-    //       }
-    //     }
-    //     if (empty($customFields)) {
-    //       if (empty($value['membership_type_id'])) {
-    //         $membershipTypeId = CRM_Core_DAO::getFieldValue('CRM_Member_DAO_Membership', $key, 'membership_type_id');
-    //       }
-    //
-    //       // membership type custom data
-    //       $customFields = CRM_Core_BAO_CustomField::getFields('Membership', FALSE, FALSE, $membershipTypeId);
-    //
-    //       $customFields = CRM_Utils_Array::crmArrayMerge($customFields,
-    //         CRM_Core_BAO_CustomField::getFields('Membership',
-    //           FALSE, FALSE, NULL, NULL, TRUE
-    //         )
-    //       );
-    //     }
-    //     //check for custom data
-    //     $value['custom'] = CRM_Core_BAO_CustomField::postProcess($params['field'][$key],
-    //       $key,
-    //       'Membership',
-    //       $membershipTypeId
-    //     );
-    //
-    //     $membership = CRM_Member_BAO_Membership::add($value);
-    //
-    //     // add custom field values
-    //     if (!empty($value['custom']) &&
-    //       is_array($value['custom'])
-    //     ) {
-    //       CRM_Core_BAO_CustomValueTable::store($value['custom'], 'civicrm_membership', $membership->id);
-    //     }
-    //   }
-    //   return $value;
-    // }
 
   }
