@@ -37,7 +37,11 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       parent::preProcess();
 
       //get the contact read only fields to display.
-      $readOnlyFields = array_merge(['sort_name' => ts('Name')],
+      $readOnlyFields = array_merge([
+        'sort_name' => ts('Name'),
+        'membership_id' => ts('Membership ID'),
+        'membership_name' => ts('Membership Type'),
+      ],
         CRM_Core_BAO_Setting::valueOptions(CRM_Core_BAO_Setting::SYSTEM_PREFERENCES_NAME,
           'contact_autocomplete_options',
           TRUE, NULL, FALSE, 'name', TRUE
@@ -48,6 +52,11 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       $contactDetails = CRM_Contact_BAO_Contact_Utils::contactDetails($this->_memberIds,
         'CiviMember', $returnProperties
       );
+      foreach ($contactDetails as $memberId => &$contactInfo) {
+        $contactInfo['membership_id'] = $memberId;
+        $membership = bulkrenewmembership_helperApiCall('Membership', 'getsingle', ['id' => $memberId]);
+        $contactInfo['membership_name'] = $membership['membership_name'];
+      }
       $this->assign('contactDetails', $contactDetails);
       $this->assign('readOnlyFields', $readOnlyFields);
     }
@@ -133,7 +142,6 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
             }
           }
           else {
-            // print_r($field); die();
             // TODO add fields by mirroring how its done in commented out function
             $this->add($field['html_type'], $field['name'], $field['title'], NULL, FALSE);
             // handle non custom fields
