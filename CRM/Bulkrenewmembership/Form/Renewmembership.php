@@ -92,21 +92,28 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
       $this->_title = ts('Bulk Renew Memberships');
       CRM_Utils_System::setTitle($this->_title);
       $this->addDefaultButtons(ts('Save'));
-      $this->_fields = ['total_amount' => [
-        'name' => 'total_amount',
-        'title' => 'Total Amount',
-        'html_type' => 'text',
-        ],
-        'is_renew' => [
-          'name' => 'is_renew',
-          'title' => 'Renew?',
+      $this->_fields = [
+        'financial_type' => [
+          'name' => 'financial_type',
+          'title' => 'Financial Type',
           'html_type' => 'select',
           'attributes' => [],
           'required' => FALSE,
-        ]
+        ],
+        'total_amount' => [
+          'name' => 'total_amount',
+          'title' => 'Total Amount',
+          'html_type' => 'text',
+        ],
+        'is_renew' => [
+          'name' => 'is_renew',
+          'title' => 'Confirm',
+          'html_type' => 'select',
+          'attributes' => [],
+          'required' => FALSE,
+        ],
       ];
-      // $this->_fields = CRM_Core_BAO_UFGroup::getFields(18, FALSE, CRM_Core_Action::VIEW);
-      // print_r($this->_fields); die();
+
       // // remove file type field and then limit fields
       $suppressFields = FALSE;
       $removehtmlTypes = ['File'];
@@ -221,6 +228,9 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
               $defaults["field[$memberId][{$fieldDetails['name']}]"] = 1;
             }
           }
+          elseif ($fieldName == 'financial_type') {
+            $defaults["field[$memberId][{$fieldDetails['name']}]"] = $lastPaymentInfo['financial_type_id'];
+          }
           elseif (isset($lastPaymentInfo[$fieldDetails['name']])) {
             $defaults["field[$memberId][{$fieldDetails['name']}]"] = $lastPaymentInfo[$fieldDetails['name']];
           }
@@ -269,6 +279,9 @@ class CRM_Bulkrenewmembership_Form_Renewmembership extends CRM_Member_Form_Task 
               if (isset($fieldDetails['name']) && isset($this->_submitValues['field'][$membershipId][$fieldDetails['name']])) {
                 $newPaymentDetails[$fieldDetails['name']] = $this->_submitValues['field'][$membershipId][$fieldDetails['name']];
               }
+            }
+            if (isset($this->_submitValues['field'][$membershipId]['financial_type'])) {
+              $newPaymentDetails['financial_type_id'] = $newPaymentDetails['contribution_type_id'] = $this->_submitValues['field'][$membershipId]['financial_type'];
             }
 
             // Create new Membership Payment
