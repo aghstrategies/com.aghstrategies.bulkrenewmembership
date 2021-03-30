@@ -1,44 +1,18 @@
 # com.aghstrategies.bulkrenewmembership
 
-![Screenshot](/images/screenshot.png)
+Adds an action "Bulk Renew Memberships" to the Action menu on the Find Memberships Search From.
 
-(*FIXME: In one or two paragraphs, describe what the extension does and why one would download it. *)
+This action takes you to a screen where you can see details about the Membership and related payment
+![Bulk Renew Screen](/images/bulkRenew.png)
 
-The extension is licensed under [AGPL-3.0](LICENSE.txt).
-
-## Requirements
-
-* PHP v7.0+
-* CiviCRM (*FIXME: Version number*)
-
-## Installation (Web UI)
-
-This extension has not yet been published for installation via the web UI.
-
-## Installation (CLI, Zip)
-
-Sysadmins and developers may download the `.zip` file for this extension and
-install it with the command-line tool [cv](https://github.com/civicrm/cv).
-
-```bash
-cd <extension-dir>
-cv dl com.aghstrategies.bulkrenewmembership@https://github.com/FIXME/com.aghstrategies.bulkrenewmembership/archive/master.zip
-```
-
-## Installation (CLI, Git)
-
-Sysadmins and developers may clone the [Git](https://en.wikipedia.org/wiki/Git) repo for this extension and
-install it with the command-line tool [cv](https://github.com/civicrm/cv).
-
-```bash
-git clone https://github.com/FIXME/com.aghstrategies.bulkrenewmembership.git
-cv en bulkrenewmembership
-```
-
-## Usage
-
-(* FIXME: Where would a new user navigate to get started? What changes would they see? *)
-
-## Known Issues
-
-(* FIXME *)
+## Columns
+| Column Name | Description | Editable |
+|--|--|--|
+| Name | Name of contact | No |
+| Membership ID | ID of membership adding a pending payment for | No |
+| Contribution Source | Source of the last completed payment for the membership | No |
+| Has Pending Payment? | If there is a Pending Payment already for the membership this column shows the ID and source for that pending contribution, this is to help the user decide if they want to create another pending payment. | No |
+| Email Address | Email Address of the member | No |
+| Financial Type | Financial Type of the new Pending Payment defaults to the same as the last completed payment | yes |
+| Total Amount | Total Amount of the new Pending Membership Payment, Defaults to the same as the last completed payment | yes |
+| Confirm | New Pending Payments will only be created for rows with this checkbox checked. Defaults to checked if there is no existing pending Payment | yes |
